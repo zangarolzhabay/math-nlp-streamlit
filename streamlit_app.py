@@ -141,20 +141,20 @@ def load_pivot():
         return None
     pivot = pd.read_csv(PIVOT_PATH, encoding="utf-8-sig")
 
-    # ожидаем: 1-я колонка student_id или индекс
-    # делаем student_id индексом
     if "student_id" in pivot.columns:
-        pivot["student_id"] = pivot["student_id"].astype(str)
+        pivot["student_id"] = pivot["student_id"].astype(str).str.strip().str.lower()
         pivot = pivot.set_index("student_id")
     else:
-        # если нет student_id, считаем что первая колонка — это student_id
-        pivot.iloc[:, 0] = pivot.iloc[:, 0].astype(str)
-        pivot = pivot.set_index(pivot.columns[0])
+        # если student_id уже индекс (первая колонка)
+        pivot = pd.read_csv("pivot_table.csv", index_col=0)
+        pivot.index = pivot.index.astype(str).str.strip().str.lower()
 
-    # остальные колонки должны быть темами с числами 0..1
-    for c in pivot.columns:
-        pivot[c] = pd.to_numeric(pivot[c], errors="coerce")
-    return pivot
+    student_key = student_id.strip().lower()
+
+    if student_key not in pivot.index:
+        st.warning("Этого ученика нет в pivot_table.csv")
+        st.write("Вот какие ученики есть:", list(pivot.index)[:50])
+        st.stop(
 # =========================
 # Ученики (фиксированный список)
 # =========================
