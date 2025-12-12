@@ -6,7 +6,11 @@ from pathlib import Path
 from datetime import datetime
 import random
 
-from topic_blocks import topic_blocks.py
+import importlib
+import topic_blocks as tb
+importlib.reload(tb)
+
+topic_blocks = tb.topic_blocks
 
 
 # =========================
