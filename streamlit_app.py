@@ -12,7 +12,7 @@ from topic_blocks import topic_blocks
 # Пути к файлам (в репо рядом)
 # =========================
 DATA_PATH = Path("math_tasks.csv")
-MODEL_PATH = Path("nlp_model.pkl")
+MODEL_PATH = Path("nlp_model (1).pkl")
 PROGRESS_PATH = Path("progress.json")
 ATTEMPTS_PATH = Path("attempts_log.csv")
 
