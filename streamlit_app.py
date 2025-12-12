@@ -160,7 +160,7 @@ def load_pivot():
 # UI
 # =========================
 st.set_page_config(page_title="Онлайн репетитор", layout="wide")
-st.title("Онлайн репетитор: NLP + Рекомендации + Практика")
+st.title("Онлайн репетитор по математике)
 
 # загрузки
 tasks_df, TOPIC_COL, TEXT_COL = load_tasks()
@@ -232,8 +232,8 @@ elif mode == "2) Рекомендации по pivot_table":
         else:
             weak_topics = row[row < 0.5].sort_values().index.tolist()
 
-            st.write(f"🎯 Рекомендации для ученика **#{student_id}**")
-            st.write(f"❌ Слабые темы (accuracy < 0.5): **{weak_topics if weak_topics else 'нет'}**")
+            st.write(f" Рекомендации для ученика **#{student_id}**")
+            st.write(f"❌ Слабые темы : **{weak_topics if weak_topics else 'нет'}**")
 
             for topic in weak_topics:
                 st.markdown("---")
@@ -255,7 +255,7 @@ elif mode == "2) Рекомендации по pivot_table":
 # 3) Практика + XP (клик = +XP)
 # =========================
 else:
-    st.subheader("3) Практика + XP (без проверки ответа)")
+    st.subheader("3) Практика + XP")
     st.caption("Нажал «Следующая задача» = получил XP. Лог пишется в practice_log.csv.")
 
     if not student_id:
