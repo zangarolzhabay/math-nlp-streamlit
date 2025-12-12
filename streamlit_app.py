@@ -160,7 +160,7 @@ def load_pivot():
 # UI
 # =========================
 st.set_page_config(page_title="Онлайн репетитор", layout="wide")
-st.title("Онлайн репетитор по математике)
+st.title("Онлайн репетитор по математике")
 
 # загрузки
 tasks_df, TOPIC_COL, TEXT_COL = load_tasks()
