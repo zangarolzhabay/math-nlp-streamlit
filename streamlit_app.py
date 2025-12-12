@@ -13,7 +13,7 @@ from topic_blocks import topic_blocks
 # =========================
 DATA_PATH = Path("math_tasks.csv")        # датасет задач
 MODEL_PATH = Path("nlp_model (1).pkl")        # твоя NLP модель (joblib/pkl)
-PIVOT_PATH = Path("pivot_table.csv")      
+PIVOT_PATH = Path("pivot_table.csv")      # готовая сводная: строки student_id, колонки темы, значения accuracy (0..1)
 PRACTICE_LOG_PATH = Path("practice_log.csv")  # пустой лог для режима 3
 
 # =========================
@@ -141,37 +141,26 @@ def load_pivot():
         return None
     pivot = pd.read_csv(PIVOT_PATH, encoding="utf-8-sig")
 
+    # ожидаем: 1-я колонка student_id или индекс
+    # делаем student_id индексом
     if "student_id" in pivot.columns:
-        pivot["student_id"] = pivot["student_id"].astype(str).str.strip().str.lower()
+        pivot["student_id"] = pivot["student_id"].astype(str)
         pivot = pivot.set_index("student_id")
     else:
-        # если student_id уже индекс (первая колонка)
-        pivot = pd.read_csv("pivot_table.csv", index_col=0)
-        pivot.index = pivot.index.astype(str).str.strip().str.lower()
+        # если нет student_id, считаем что первая колонка — это student_id
+        pivot.iloc[:, 0] = pivot.iloc[:, 0].astype(str)
+        pivot = pivot.set_index(pivot.columns[0])
 
-    student_key = student_id.strip().lower()
-
-    if student_key not in pivot.index:
-        st.warning("Этого ученика нет в pivot_table.csv")
-        st.write("Вот какие ученики есть:", list(pivot.index)[:50])
-        st.stop()
-# =========================
-# Ученики (фиксированный список)
-# =========================
-STUDENTS = [
-    "Aruzhan", "Timur", "Alina", "Dias", "Dana",
-    "Nursultan", "Aigerim", "Ilyas", "Madina", "Bekzat",
-    "Amina", "Islam", "Zhansaya", "Adilet", "Ali",
-    "Sabina", "Nurlan", "Zarina", "Eldar", "Beknur",
-    "Alisher", "Daniyar", "Sanzhar", "Assel", "Arman",
-    "Kamila", "Nuray", "Ruslan", "Asem", "Madi"
-]
+    # остальные колонки должны быть темами с числами 0..1
+    for c in pivot.columns:
+        pivot[c] = pd.to_numeric(pivot[c], errors="coerce")
+    return pivot
 
 # =========================
 # UI
 # =========================
 st.set_page_config(page_title="Онлайн репетитор", layout="wide")
-st.title("Онлайн репетитор по математике")
+st.title("Онлайн репетитор: NLP + Рекомендации + Практика")
 
 # загрузки
 tasks_df, TOPIC_COL, TEXT_COL = load_tasks()
@@ -181,10 +170,7 @@ ensure_practice_log()
 
 # Sidebar
 st.sidebar.header("Настройки")
-student_id = st.sidebar.selectbox(
-    "Выберите ученика",
-    STUDENTS
-)
+student_id = st.sidebar.text_input("student_id / ник", value="1").strip()
 
 prog = get_progress_from_practice_log(student_id) if student_id else {"xp": 0, "level": 1}
 st.sidebar.metric("XP", prog["xp"])
@@ -194,7 +180,7 @@ st.sidebar.caption("XP считается из practice_log.csv (только р
 mode = st.sidebar.radio("Режим", [
     "1) NLP: задача → тема",
     "2) Рекомендации по pivot_table",
-    "3) Практика + XP (без проверки ответа)"
+    "3) Практика + XP 
 ])
 
 # =========================
@@ -246,7 +232,7 @@ elif mode == "2) Рекомендации по pivot_table":
         else:
             weak_topics = row[row < 0.5].sort_values().index.tolist()
 
-            st.write(f" Рекомендации для ученика **#{student_id}**")
+            st.write(f"🎯 Рекомендации для ученика **#{student_id}**")
             st.write(f"❌ Слабые темы : **{weak_topics if weak_topics else 'нет'}**")
 
             for topic in weak_topics:
