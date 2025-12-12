@@ -231,39 +231,64 @@ if mode == "🎯 Задача → тема":
 # -------------------------
 # 2) Рекомендации ученику
 # -------------------------
-elif mode == "🧠 Рекомендации ученику":
-    st.subheader("🧠 Рекомендации по слабым темам (из attempts_log.csv)")
-    pivot, attempts_df = build_pivot_from_attempts()
+def build_attempts_df():
+    ensure_files()
+    df = pd.read_csv(ATTEMPTS_PATH, encoding="utf-8-sig")
+    # нормализуем типы
+    if not df.empty:
+        df["student_id"] = df["student_id"].astype(str)
+        df["topic"] = df["topic"].astype(str)
+        df["difficulty"] = df["difficulty"].astype(str).str.lower()
+        df["correct"] = df["correct"].astype(int)
+    return df
 
-    if pivot is None or attempts_df is None or attempts_df.empty:
-        st.info("Пока нет попыток. Зайди в режим Учитель и нажми «Засчитать».")
-    else:
-        if student_id not in pivot.index:
-            st.warning("По этому student_id пока нет данных.")
+def build_pivot_table_from_attempts(df):
+    if df is None or df.empty:
+        return None
+    pivot = df.pivot_table(index="student_id", columns="topic", values="correct", aggfunc="mean")
+    return pivot
+
+def recommend_for_student_streamlit(student_id: str, tasks_df, topic_col, text_col):
+    attempts_df = build_attempts_df()
+    if attempts_df.empty:
+        st.info("Пока нет попыток в attempts_log.csv. Зайди в режим «Учитель» и нажми «Засчитать».")
+        return
+
+    pivot_table = build_pivot_table_from_attempts(attempts_df)
+    if pivot_table is None or student_id not in pivot_table.index:
+        st.warning("По этому student_id пока нет данных.")
+        return
+
+    row = pivot_table.loc[student_id].dropna()
+    if row.empty:
+        st.warning("Недостаточно данных для рекомендаций.")
+        return
+
+    weak_topics = row[row < 0.5].sort_values().index.tolist()
+    if not weak_topics:
+        st.success("Слабых тем не найдено (точность по всем темам ≥ 0.5).")
+        return
+
+    st.write(f"❌ Слабые темы (точность < 0.5): **{weak_topics}**")
+
+    for topic in weak_topics:
+        st.markdown("---")
+        st.subheader(f"📌 Тема: {topic}")
+
+        # теория
+        if topic in topic_blocks:
+            show_topic_block(topic)
         else:
-            row = pivot.loc[student_id].dropna()
-            if row.empty:
-                st.warning("Недостаточно данных для рекомендаций.")
+            st.info(f"Для темы '{topic}' пока нет обучающего блока в topic_blocks.py")
+
+        # практика: 1 задача на уровень
+        st.write("🧠 Практика (1 задача на уровень):")
+        for diff in ["easy", "medium", "hard"]:
+            t = pick_task(tasks_df, topic_col, text_col, topic, diff)
+            if t:
+                st.write(f"**{diff.upper()}**: {t}")
             else:
-                weak = row[row < 0.5].sort_values().index.tolist()
-                st.write(f"Слабые темы (точность < 0.5): **{weak if weak else 'нет'}**")
-
-                for topic in weak:
-                    st.markdown("---")
-                    st.markdown(f"### 📌 {topic}")
-
-                    if topic in topic_blocks:
-                        show_topic_block(topic)
-                    else:
-                        st.info("Нет topic_blocks для этой темы.")
-
-                    st.subheader("🧠 Практика (1 задача на уровень)")
-                    for diff in ["easy", "medium", "hard"]:
-                        t = pick_task(tasks_df, TOPIC_COL, TEXT_COL, topic, diff)
-                        if t:
-                            st.write(f"**{diff.upper()}**: {t}")
-                        else:
-                            st.caption(f"{diff.upper()}: нет задачи в датасете")
+                st.caption(f"{diff.upper()}: нет задачи в датасете")
 
 # -------------------------
 # 3) Учитель: аналитика + XP
