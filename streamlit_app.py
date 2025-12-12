@@ -180,7 +180,7 @@ st.sidebar.caption("XP считается из practice_log.csv (только р
 mode = st.sidebar.radio("Режим", [
     "1) NLP: задача → тема",
     "2) Рекомендации по pivot_table",
-    "3) Практика + XP 
+    "3) Практика + XP "
 ])
 
 # =========================
