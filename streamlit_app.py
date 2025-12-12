@@ -155,6 +155,17 @@ def load_pivot():
     for c in pivot.columns:
         pivot[c] = pd.to_numeric(pivot[c], errors="coerce")
     return pivot
+# =========================
+# Ученики (фиксированный список)
+# =========================
+STUDENTS = [
+    "Aruzhan", "Timur", "Alina", "Dias", "Dana",
+    "Nursultan", "Aigerim", "Ilyas", "Madina", "Bekzat",
+    "Amina", "Islam", "Zhansaya", "Adilet", "Ali",
+    "Sabina", "Nurlan", "Zarina", "Eldar", "Beknur",
+    "Alisher", "Daniyar", "Sanzhar", "Assel", "Arman",
+    "Kamila", "Nuray", "Ruslan", "Asem", "Madi"
+]
 
 # =========================
 # UI
@@ -170,7 +181,10 @@ ensure_practice_log()
 
 # Sidebar
 st.sidebar.header("Настройки")
-student_id = st.sidebar.text_input("student_id / ник", value="1").strip()
+student_id = st.sidebar.selectbox(
+    "Выберите ученика",
+    STUDENTS
+)
 
 prog = get_progress_from_practice_log(student_id) if student_id else {"xp": 0, "level": 1}
 st.sidebar.metric("XP", prog["xp"])
