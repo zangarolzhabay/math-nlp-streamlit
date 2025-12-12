@@ -12,7 +12,7 @@ from topic_blocks import topic_blocks  # твой готовый словарь
 # Пути
 # =========================
 DATA_PATH = Path("math_tasks.csv")
-MODEL_PATH = Path("nlp_model.pkl")      # переименуй файл так (без (1))
+MODEL_PATH = Path("nlp_model (1).pkl")      # переименуй файл так (без (1))
 PROGRESS_PATH = Path("progress.json")
 PIVOT_PATH = Path("pivot_table.csv")   # экспортируешь из Colab
 
