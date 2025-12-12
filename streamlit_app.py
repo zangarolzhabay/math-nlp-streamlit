@@ -156,11 +156,46 @@ def load_pivot():
         pivot[c] = pd.to_numeric(pivot[c], errors="coerce")
     return pivot
 
+STUDENTS = {
+    "1": "Олжабай",
+    "2": "Али",
+    "3": "Нурали",
+    "4": "Нурайым",
+    "5": "Айару",
+    "6": "Аружан",
+    "7": "Данияр",
+    "8": "Айсана",
+    "9": "Темирлан",
+    "10": "Жанерке",
+    "11": "Ерасыл",
+    "12": "Амина",
+    "13": "Арсен",
+    "14": "Мадина",
+    "15": "Бекзат",
+    "16": "Айбек",
+    "17": "Салтанат",
+    "18": "Нурислам",
+    "19": "Диас",
+    "20": "Камила",
+    "21": "Рамазан",
+    "22": "Алина",
+    "23": "Мейиржан",
+    "24": "Айдана",
+    "25": "Самат",
+    "26": "Жасмин",
+    "27": "Ильяс",
+    "28": "Карина",
+    "29": "Санжар",
+    "30": "Малика",
+}
+
+NAME_TO_ID = {name: sid for sid, name in STUDENTS.items()}
+
 # =========================
 # UI
 # =========================
 st.set_page_config(page_title="Онлайн репетитор", layout="wide")
-st.title("Онлайн репетитор: NLP + Рекомендации + Практика")
+st.title("Онлайн репетитор по математике")
 
 # загрузки
 tasks_df, TOPIC_COL, TEXT_COL = load_tasks()
@@ -170,7 +205,8 @@ ensure_practice_log()
 
 # Sidebar
 st.sidebar.header("Настройки")
-student_id = st.sidebar.text_input("student_id / ник", value="1").strip()
+student_name = st.sidebar.selectbox("Ученик", list(STUDENTS.values()), index=0)
+student_id = NAME_TO_ID[student_name]   # это "1..30" как в CSV
 
 prog = get_progress_from_practice_log(student_id) if student_id else {"xp": 0, "level": 1}
 st.sidebar.metric("XP", prog["xp"])
