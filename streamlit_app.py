@@ -154,7 +154,7 @@ def load_pivot():
     if student_key not in pivot.index:
         st.warning("Этого ученика нет в pivot_table.csv")
         st.write("Вот какие ученики есть:", list(pivot.index)[:50])
-        st.stop(
+        st.stop()
 # =========================
 # Ученики (фиксированный список)
 # =========================
