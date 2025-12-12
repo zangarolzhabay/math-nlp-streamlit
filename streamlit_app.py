@@ -6,10 +6,8 @@ from pathlib import Path
 from datetime import datetime
 import random
 
-from topic_blocks import topic_blocks
-import topic_blocks as tb
-st.sidebar.write("topic_blocks.py path:", tb.__file__)
-st.sidebar.write("log summary head:", tb.topic_blocks["логарифмы"]["summary"][:60])
+from topic_blocks import topic_blocks.py
+
 
 # =========================
 # ФАЙЛЫ (лежать рядом в папке проекта)
