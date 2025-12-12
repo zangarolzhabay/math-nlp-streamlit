@@ -273,7 +273,7 @@ elif mode == "2) Рекомендации по pivot_table":
         else:
             weak_topics = row[row < 0.5].sort_values().index.tolist()
 
-            st.write(f"🎯 Рекомендации для ученика **#{NAME_TO_ID}**")
+            st.write(f"🎯 Рекомендации для ученика **#{STUDENTS}**")
             st.write(f"❌ Слабые темы : **{weak_topics if weak_topics else 'нет'}**")
 
             for topic in weak_topics:
