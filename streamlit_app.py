@@ -206,7 +206,7 @@ ensure_practice_log()
 # Sidebar
 st.sidebar.header("Настройки")
 student_name = st.sidebar.selectbox("Ученик", list(STUDENTS.values()), index=0)
-student_id = NAME_TO_ID[student_name]   # это "1..30" как в CSV
+student_id = NAME_TO_ID[student_name]   
 
 prog = get_progress_from_practice_log(student_id) if student_id else {"xp": 0, "level": 1}
 st.sidebar.metric("XP", prog["xp"])
@@ -251,7 +251,7 @@ if mode == "1) NLP: задача → тема":
 # 2) Рекомендации по pivot_table.csv (ничего не сохраняем)
 # =========================
 elif mode == "2) Рекомендации по pivot_table":
-    st.subheader("2) Рекомендации ученику (из pivot_table.csv)")
+    st.subheader(f" Рекомендации для ученика: {student_name}")
     st.caption("Этот режим ничего не записывает и не сохраняет. Только читает pivot_table.csv.")
 
     if pivot_table is None:
@@ -278,15 +278,22 @@ elif mode == "2) Рекомендации по pivot_table":
                 # теория
                 show_topic_block(topic)
 
-                # практика: по 1 задаче каждого уровня
-                st.write("🧠 Практика (по 1 задаче на уровень):")
-                for diff in ["easy", "medium", "hard"]:
-                    t = pick_task(tasks_df, TOPIC_COL, TEXT_COL, topic, diff)
-                    if t:
-                        st.write(f"**{diff.upper()}**: {t}")
-                    else:
-                        st.write(f"**{diff.upper()}**: нет задачи в датасете")
+                # практика: 
+                st.write("🧠 Практика:")
 
+                tasks_order = [
+                    ("Задача 1", "easy"),
+                    ("Задача 2", "medium"),
+                    ("Задача 3", "hard")
+                ]
+
+                for label, diff in tasks_order:
+                    t = pick_task(tasks_df, topic_col, text_col, topic, diff)
+                    if t:
+                        st.markdown(f"**{label}**")
+                        st.write(t)
+                    else:
+                        st.caption(f"{label}: нет задачи")
 # =========================
 # 3) Практика + XP (клик = +XP)
 # =========================
