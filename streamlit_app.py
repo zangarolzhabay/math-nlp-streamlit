@@ -6,7 +6,7 @@ from pathlib import Path
 from datetime import datetime
 import random
 
-from topic_blocks import topic_blocks.py
+from topic_blocks.py import topic_blocks
 
 
 # =========================
