@@ -288,7 +288,7 @@ elif mode == "2) Рекомендации по pivot_table":
                 ]
 
                 for label, diff in tasks_order:
-                    t = pick_task(tasks_df, topic_col, text_col, topic, diff)
+                    t = pick_task(tasks_df, TOPIC_COL, TEXT_COL, topic, diff)
                     if t:
                         st.markdown(f"**{label}**")
                         st.write(t)
