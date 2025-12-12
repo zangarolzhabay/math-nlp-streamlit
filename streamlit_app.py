@@ -13,7 +13,7 @@ from topic_blocks import topic_blocks
 # =========================
 DATA_PATH = Path("math_tasks.csv")        # датасет задач
 MODEL_PATH = Path("nlp_model (1).pkl")        # твоя NLP модель (joblib/pkl)
-PIVOT_PATH = Path("pivot_table.csv")      # готовая сводная: строки student_id, колонки темы, значения accuracy (0..1)
+PIVOT_PATH = Path("pivot_table.csv")      
 PRACTICE_LOG_PATH = Path("practice_log.csv")  # пустой лог для режима 3
 
 # =========================
