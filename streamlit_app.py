@@ -1,0 +1,283 @@
+# streamlit_app.py
+import streamlit as st
+import pandas as pd
+import joblib
+import random
+import json
+from pathlib import Path
+from datetime import datetime
+
+from topic_blocks import topic_blocks  # <-- берём ГОТОВОЕ из Colab, НЕ создаём новое
+
+# =========================
+# Настройки файлов
+# =========================
+DATA_PATH = Path("math_tasks.csv")
+MODEL_PATH = Path("nlp_model.pkl")
+PROGRESS_PATH = Path("progress.json")
+ATTEMPTS_PATH = Path("attempts_log.csv")
+
+# =========================
+# XP / уровни (можешь менять)
+# =========================
+xp_rewards = {"easy": 5, "medium": 10, "hard": 20}
+level_thresholds = {1: 0, 2: 50, 3: 120, 4: 250, 5: 500, 6: 1000}
+
+# =========================
+# Загрузка
+# =========================
+@st.cache_data
+def load_tasks():
+    df = pd.read_csv(DATA_PATH, encoding="utf-8-sig")
+    # поддержка двух вариантов названия темы
+    if "topic_clean" in df.columns:
+        topic_col = "topic_clean"
+    elif "topic" in df.columns:
+        topic_col = "topic"
+    else:
+        raise ValueError("Нет колонки topic_clean или topic в math_tasks.csv")
+
+    text_col = "task_text" if "task_text" in df.columns else df.columns[0]
+    # difficulty опционально; если нет — считаем как 'medium'
+    if "difficulty" not in df.columns:
+        df["difficulty"] = "medium"
+
+    return df, topic_col, text_col
+
+@st.cache_resource
+def load_model():
+    return joblib.load(MODEL_PATH)
+
+def _ensure_files():
+    if not PROGRESS_PATH.exists():
+        PROGRESS_PATH.write_text("{}", encoding="utf-8")
+    if not ATTEMPTS_PATH.exists():
+        pd.DataFrame(columns=["ts", "student_id", "topic", "difficulty", "correct", "task_text"]).to_csv(
+            ATTEMPTS_PATH, index=False, encoding="utf-8-sig"
+        )
+
+def load_progress():
+    _ensure_files()
+    return json.loads(PROGRESS_PATH.read_text(encoding="utf-8"))
+
+def save_progress(progress_dict):
+    PROGRESS_PATH.write_text(json.dumps(progress_dict, ensure_ascii=False, indent=2), encoding="utf-8")
+
+def get_student_progress(student_id: str):
+    progress = load_progress()
+    if student_id not in progress:
+        progress[student_id] = {"xp": 0, "level": 1, "streak": 0}
+        save_progress(progress)
+    return progress[student_id]
+
+def add_xp(student_id: str, difficulty: str):
+    difficulty = (difficulty or "medium").lower()
+    reward = xp_rewards.get(difficulty, 5)
+
+    progress = load_progress()
+    if student_id not in progress:
+        progress[student_id] = {"xp": 0, "level": 1, "streak": 0}
+
+    progress[student_id]["xp"] += reward
+    progress[student_id]["streak"] += 1
+
+    xp = progress[student_id]["xp"]
+    new_level = 1
+    for lvl, req in sorted(level_thresholds.items()):
+        if xp >= req:
+            new_level = lvl
+    progress[student_id]["level"] = new_level
+
+    save_progress(progress)
+    return progress[student_id], reward
+
+def log_attempt(student_id: str, topic: str, difficulty: str, correct: int, task_text: str):
+    row = {
+        "ts": datetime.now().isoformat(timespec="seconds"),
+        "student_id": student_id,
+        "topic": topic,
+        "difficulty": (difficulty or "medium").lower(),
+        "correct": int(correct),
+        "task_text": task_text
+    }
+    df = pd.read_csv(ATTEMPTS_PATH, encoding="utf-8-sig")
+    df = pd.concat([df, pd.DataFrame([row])], ignore_index=True)
+    df.to_csv(ATTEMPTS_PATH, index=False, encoding="utf-8-sig")
+
+def build_pivot_from_attempts():
+    if not ATTEMPTS_PATH.exists():
+        return None, None
+    df = pd.read_csv(ATTEMPTS_PATH, encoding="utf-8-sig")
+    if df.empty:
+        return None, df
+    # доля правильных по теме
+    pivot = df.pivot_table(index="student_id", columns="topic", values="correct", aggfunc="mean")
+    return pivot, df
+
+def pick_task(tasks_df, topic_col, text_col, topic, difficulty):
+    sub = tasks_df[tasks_df[topic_col] == topic].copy()
+    if sub.empty:
+        return None
+    if "difficulty" in sub.columns:
+        sub2 = sub[sub["difficulty"].str.lower() == difficulty.lower()]
+        if not sub2.empty:
+            sub = sub2
+    return sub.sample(1)[text_col].values[0]
+
+def show_topic_block(topic_key: str):
+    info = topic_blocks.get(topic_key)
+    if not info:
+        st.warning("Для этой темы нет topic_blocks.")
+        return
+
+    # Всё прячем в экспандеры (как ты хотел: не сразу)
+    with st.expander("📖 Определение", expanded=False):
+        st.write(info.get("definition", ""))
+
+    with st.expander("📘 Конспект", expanded=False):
+        st.write(info.get("summary", ""))
+
+    if info.get("formulas"):
+        with st.expander("🧾 Формулы", expanded=False):
+            for f in info["formulas"]:
+                st.write(f"- {f}")
+
+    if info.get("example"):
+        with st.expander("💡 Пример", expanded=False):
+            st.write(info["example"])
+
+    if info.get("youtube"):
+        with st.expander("🎥 YouTube", expanded=False):
+            y = info["youtube"]
+            if isinstance(y, list):
+                for link in y:
+                    st.write(link)
+            else:
+                st.write(y)
+
+# =========================
+# UI
+# =========================
+st.set_page_config(page_title="Math Tutor", layout="wide")
+st.title("Math Tutor: NLP + Рекомендации + XP")
+
+_ensure_files()
+tasks_df, TOPIC_COL, TEXT_COL = load_tasks()
+model = load_model()
+
+# Sidebar
+st.sidebar.header("Настройки")
+student_id = st.sidebar.text_input("student_id / ник", value="1").strip()
+
+prog = get_student_progress(student_id) if student_id else {"xp": 0, "level": 1, "streak": 0}
+st.sidebar.metric("XP", prog["xp"])
+st.sidebar.metric("Уровень", prog["level"])
+st.sidebar.caption("XP сохраняется в progress.json")
+
+mode = st.sidebar.radio("Режим", ["🎯 Задача → тема", "🧠 Рекомендации ученику", "👨‍🏫 Учитель (аналитика)"])
+
+# -------------------------
+# 1) Задача -> тема
+# -------------------------
+if mode == "🎯 Задача → тема":
+    user_text = st.text_area("Введи текст задачи:", height=140)
+
+    if st.button("🔍 Определить тему"):
+        if not user_text.strip():
+            st.warning("Введи задачу.")
+        else:
+            # Assuming tfidf_vectorizer_reduced is globally available from the notebook
+            # And get_hints_for_text is also available from notebook context
+            predicted_topic_for_hints, skill_type, h1_val, h2_val = get_hints_for_text(user_text, model, tfidf_vectorizer_reduced, topic_blocks)
+
+            st.success(f"Тема (модель): **{predicted_topic_for_hints}**")
+
+            # показываем твой готовый блок
+            if predicted_topic_for_hints in topic_blocks:
+                show_topic_block(predicted_topic_for_hints)
+            else:
+                st.info("Для этой темы нет topic_blocks. Добавь её в topic_blocks.py")
+
+            # тренировка: выдаём 1 задачу каждого уровня
+            st.subheader("📝 Тренировка по этой теме")
+            cols = st.columns(3)
+            for col, diff in zip(cols, ["easy", "medium", "hard"]):
+                with col:
+                    st.write(f"**{diff.upper()}**")
+                    t = pick_task(tasks_df, TOPIC_COL, TEXT_COL, predicted_topic_for_hints, diff)
+                    if t:
+                        st.write(t)
+                    else:
+                        st.caption("Нет задач этого уровня в датасете.")
+
+# -------------------------
+# 2) Рекомендации ученику
+# -------------------------
+elif mode == "🧠 Рекомендации ученику":
+    st.subheader("🧠 Рекомендации по слабым темам (из attempts_log.csv)")
+    pivot, attempts_df = build_pivot_from_attempts()
+
+    if pivot is None or attempts_df is None or attempts_df.empty:
+        st.info("Пока нет попыток. Сначала реши пару задач и нажми «Засчитать».")
+    else:
+        if student_id not in pivot.index:
+            st.warning("По этому student_id пока нет данных.")
+        else:
+            row = pivot.loc[student_id].dropna()
+            if row.empty:
+                st.warning("Недостаточно данных для рекомендаций.")
+            else:
+                weak = row[row < 0.5].sort_values().index.tolist()
+
+                st.write(f"Слабые темы (точность < 0.5): **{weak if weak else 'нет'}**")
+
+                for topic in weak:
+                    st.markdown("---")
+                    st.markdown(f"### 📌 {topic}")
+
+                    if topic in topic_blocks:
+                        show_topic_block(topic)
+                    else:
+                        st.info("Нет topic_blocks для этой темы.")
+
+                    st.subheader("🧠 Практика (1 задача на уровень)")
+                    for diff in ["easy", "medium", "hard"]:
+                        t = pick_task(tasks_df, TOPIC_COL, TEXT_COL, topic, diff)
+                        if t:
+                            st.write(f"**{diff.upper()}**: {t}")
+                        else:
+                            st.caption(f"{diff.upper()}: нет задачи в датасете")
+
+# -------------------------
+# 3) Учитель: аналитика + засчитывание
+# -------------------------
+else:
+    st.subheader("👨‍🏫 Аналитика + засчитывание задач")
+    st.caption("Здесь можно копить данные для pivot_table и рекомендаций.")
+
+    # распределение тем
+    st.write("**Распределение задач по темам**")
+    st.bar_chart(tasks_df[TOPIC_COL].value_counts())
+
+    st.markdown("---")
+    st.write("**Засчитать решённую задачу (создаёт attempts_log.csv)**")
+
+    topic_for_log = st.selectbox("Тема", sorted(tasks_df[TOPIC_COL].unique()))
+    diff_for_log = st.selectbox("Сложность", ["easy", "medium", "hard"], index=1)
+    task_text = pick_task(tasks_df, TOPIC_COL, TEXT_COL, topic_for_log, diff_for_log)
+
+    if task_text:
+        st.write("**Задача:**")
+        st.write(task_text)
+
+        correct = st.radio("Решено правильно?", ["Да", "Нет"], horizontal=True)
+        if st.button("✅ Засчитать и дать XP"):
+            if not student_id:
+                st.warning("Введи student_id слева.")
+            else:
+                log_attempt(student_id, topic_for_log, diff_for_log, 1 if correct == "Да" else 0, task_text)
+                updated, reward = add_xp(student_id, diff_for_log)
+                st.success(f"Записано. +{reward} XP. Уровень: {updated['level']}, XP: {updated['xp']}")
+
+    else:
+        st.warning("Нет задач для этой темы/сложности.")
